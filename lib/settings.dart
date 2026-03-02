@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:onclip/utils/api_request.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Settings extends StatefulWidget {
   const Settings({super.key});
@@ -7,10 +9,20 @@ class Settings extends StatefulWidget {
   State<Settings> createState() => _Settings();
 }
 class _Settings extends State<Settings> {
-  String username = "";
+  late Future futureData;
+  TextEditingController textFieldEndpoint = TextEditingController();
 
-  void saveAccount(){
+  bool testEndpointBool = false;
 
+  Future<void> saveSettings() async{
+    final settings = await SharedPreferences.getInstance();
+    settings.setString('endpoint', textFieldEndpoint.text);
+  }
+
+  @override
+  void dispose(){
+    textFieldEndpoint.dispose();
+    super.dispose();
   }
 
   @override
@@ -37,7 +49,7 @@ class _Settings extends State<Settings> {
             children: [
               SizedBox(height: 12),
               TextField(
-                controller: null,
+                controller: textFieldEndpoint,
                 obscureText: true,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(),
@@ -47,9 +59,34 @@ class _Settings extends State<Settings> {
               SizedBox(height: 12),
               ElevatedButton(
                 child: Text("TEST ENDPOINT"),
-                onPressed: () {},
+                onPressed: () {
+                  setState(() {
+                    testEndpointBool = true;
+                    futureData = testEndpoint(textFieldEndpoint.text);
+                  });
+                },
               ),
               SizedBox(height: 6),
+              if(testEndpointBool) (
+                FutureBuilder(
+                  future: futureData,
+                  builder: (context, snapshot){
+                    if(snapshot.hasData){
+                      return Text(
+                        snapshot.data!,
+                        textAlign: TextAlign.center,
+                      );
+                    }else if(snapshot.hasError){
+                      return Text(
+                        '${snapshot.error}',
+                        textAlign: TextAlign.center,
+                      );
+                    }
+
+                    return const CircularProgressIndicator();
+                  },
+                )
+              ),
               Expanded(
                 child: Padding(
                   padding: EdgeInsetsGeometry.only(bottom: 12),
@@ -65,7 +102,7 @@ class _Settings extends State<Settings> {
                           ),
                         ),
                         onPressed: (){
-                          saveAccount();
+                          saveSettings();
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
