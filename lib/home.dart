@@ -68,6 +68,46 @@ class _HomeState extends State<Home> {
     }
   }
 
+  void saveClipboardData(String endpoint, String conn, data) async{
+    setState((){
+      currentConnection = conn;
+      connectionStatus = "Saving";
+      connectionIndicator = Colors.orangeAccent;
+    });
+
+    try{
+      clipboardData = await saveClipboard(endpoint, conn, data);
+      setState(() {
+        connectionStatus = "Saved";
+        connectionIndicator = Colors.green;
+      });
+
+      Future.delayed(
+        Duration(seconds: 3),
+        (){
+          setState(() {
+            connectionStatus = "Connected";
+          });
+        },
+      );
+    }catch(error){
+      setState(() {
+        connectionStatus = "Saving Failed";
+        connectionIndicator = Colors.redAccent;
+      });
+
+      Future.delayed(
+        Duration(seconds: 3),
+        (){
+          setState(() {
+            connectionStatus = "Connected";
+            connectionIndicator = Colors.green;
+          });
+        },
+      );
+    }
+  }
+
   void addConnection(String connectionString) async{
     final settings = await SharedPreferences.getInstance();
     List<String> cons = settings.getStringList("connections") ?? [];
@@ -85,11 +125,23 @@ class _HomeState extends State<Home> {
     getSavedConnections();
   }
 
+  void deleteConnection(String connectionString) async{
+    final settings = await SharedPreferences.getInstance();
+    List<String> cons = settings.getStringList("connections") ?? [];
+
+    if(cons.contains(connectionString)){
+      cons.remove(connectionString);
+    }
+
+    settings.setStringList("connections", cons);
+    getSavedConnections();
+  }
+
   void getSavedConnections() async{
     final settings = await SharedPreferences.getInstance();
     
     setState(() {
-      connections = settings.getStringList("connections") ?? [];
+      connections = settings.getStringList("connections") ?? ["Default"];
     });
   }
 
@@ -102,7 +154,7 @@ class _HomeState extends State<Home> {
           children: [
             InkWell(
               onTap: () {
-                getClipboardData(savedEndpoint, "Default");
+                getClipboardData(savedEndpoint, currentConnection);
               },
               borderRadius: BorderRadius.circular(50),
               splashColor: Colors.yellowAccent,
@@ -136,39 +188,22 @@ class _HomeState extends State<Home> {
             icon: Icon(Icons.copy),
             color: Colors.black,
             iconSize: 24,
-            onPressed: () => {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const Settings()
-                ),
-              ),
-            },
+            onPressed: () => {},
           ),
           IconButton(
             icon: Icon(Icons.paste),
             color: Colors.black,
             iconSize: 24,
-            onPressed: () => {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const Settings()
-                ),
-              ),
-            },
+            onPressed: () => {},
           ),
           IconButton(
             icon: Icon(Icons.save),
             color: Colors.black,
             iconSize: 24,
             onPressed: () => {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const Settings()
-                ),
-              ),
+              if(clipboard.text.trim().isNotEmpty){
+                saveClipboardData(savedEndpoint, currentConnection, clipboard.text.trim())
+              }
             },
           ),
           IconButton(
@@ -231,7 +266,10 @@ class _HomeState extends State<Home> {
                           getClipboardData(savedEndpoint, con);
                           closeDrawer();
                         },
-                        child: Text(con)
+                        onLongPress: () {
+                          deleteConnection(con);
+                        },
+                        child: Text(con),
                       ),
                     ),
                   )).toList(),
@@ -266,6 +304,7 @@ class _HomeState extends State<Home> {
                       onPressed: (){
                         if(addConnectionTextField.text.trim().isNotEmpty){
                           addConnection(addConnectionTextField.text);
+                          closeDrawer();
                         }
                       },
                       child: Text(
@@ -287,10 +326,10 @@ class _HomeState extends State<Home> {
         onPressed: () {
           openDrawer();
         },
-        tooltip: 'Add Connection',
+        tooltip: 'Select/Add Connection',
         backgroundColor: Colors.white,
         child: Icon(
-          Icons.add
+          Icons.select_all
         ),
       ),
     );

@@ -17,16 +17,17 @@ Future<String> getClipboard(String endpoint, String conn) async{
   }
 }
 
-Future saveClipboard(String endpoint, String conn) async{
-  final response = await http.get(
+Future saveClipboard(String endpoint, String conn, String data) async{
+  final response = await http.post(
     Uri.parse("$endpoint$conn"),
     headers: {
       HttpHeaders.contentTypeHeader: 'text/plain'
-    }
+    },
+    body: data,
   );
   
   if(response.statusCode == 200){
-    return response.body;
+    return "Clipboard Saved!";
   }else{
     throw Exception("Error ${response.statusCode}");
   }
