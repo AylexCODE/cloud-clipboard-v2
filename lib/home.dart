@@ -13,35 +13,41 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   final GlobalKey<ScaffoldState> scaffoldKey = GlobalKey<ScaffoldState>();
   final TextEditingController clipboard = TextEditingController();
+  final TextEditingController addConnectionTextField = TextEditingController();
 
   String clipboardData = "";
+  List<String> connections = [];
 
   String savedEndpoint = "";
+  String currentConnection = "Default";
   String connectionStatus = "Connecting";
   Color connectionIndicator = Colors.orangeAccent;
 
   @override
   void initState(){
     super.initState();
+    getSavedConnections();
     getSavedEndpoint();
   }
 
   void openDrawer() {
     scaffoldKey.currentState!.openEndDrawer();
   }
+  
+  void closeDrawer(){
+    scaffoldKey.currentState!.closeEndDrawer();
+  }
 
   Future<void> getSavedEndpoint() async{
     final settings = await SharedPreferences.getInstance();
-
-    setState(() {
-      savedEndpoint = settings.getString('endpoint') ?? '';
-    });
-
+    savedEndpoint = settings.getString("endpoint") ?? '';
+    
     getClipboardData(settings.getString("endpoint") ?? '', "Default");
   }
 
   void getClipboardData(String endpoint, String conn) async{
     setState((){
+      currentConnection = conn;
       connectionStatus = "Connecting";
       connectionIndicator = Colors.orangeAccent;
     });
@@ -62,8 +68,29 @@ class _HomeState extends State<Home> {
     }
   }
 
-  void setConnectionState(){
+  void addConnection(String connectionString) async{
+    final settings = await SharedPreferences.getInstance();
+    List<String> cons = settings.getStringList("connections") ?? [];
+
+    if(!cons.contains(connectionString)){
+      cons.add(connectionString);
+      setState(() {
+        addConnectionTextField.text = "";
+      });
+    }
+
+    settings.setStringList("connections", cons);
+
+    getClipboardData(savedEndpoint, connectionString);
+    getSavedConnections();
+  }
+
+  void getSavedConnections() async{
+    final settings = await SharedPreferences.getInstance();
     
+    setState(() {
+      connections = settings.getStringList("connections") ?? [];
+    });
   }
 
   @override
@@ -85,7 +112,7 @@ class _HomeState extends State<Home> {
                 backgroundColor: connectionIndicator,
               ),
             ),
-            Text("Default", 
+            Text(currentConnection, 
               style: TextStyle(
                 fontSize: 16
               ),
@@ -194,13 +221,37 @@ class _HomeState extends State<Home> {
           SingleChildScrollView(
             child: Column(
               children: [
+                Column(
+                  children: connections.map((con) => SizedBox(
+                    width: MediaQuery.of(context).size.height,
+                    child: Padding(
+                      padding: EdgeInsetsGeometry.fromLTRB(8.0, 0.0, 8.0, 8.0),
+                      child: ElevatedButton(
+                        onPressed: (){
+                          getClipboardData(savedEndpoint, con);
+                          closeDrawer();
+                        },
+                        child: Text(con)
+                      ),
+                    ),
+                  )).toList(),
+                ),
                 SizedBox(
                   width: MediaQuery.of(context).size.height,
                   child: Padding(
-                    padding: EdgeInsetsGeometry.fromLTRB(8.0, 0.0, 8.0, 0.0),
-                    child: ElevatedButton(
-                      onPressed: (){},
-                      child: Text("data")
+                    padding: EdgeInsetsGeometry.fromLTRB(8.0, 8.0, 8.0, 0.0),
+                    child: TextField(
+                      controller: addConnectionTextField,
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)
+                        ),
+                        contentPadding: EdgeInsets.fromLTRB(4.0, 8.0, 4.0, 8.0),
+                        constraints: BoxConstraints(
+                          maxWidth: 5.0
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -209,8 +260,21 @@ class _HomeState extends State<Home> {
                   child: Padding(
                     padding: EdgeInsetsGeometry.fromLTRB(8.0, 8.0, 8.0, 0.0),
                     child: ElevatedButton(
-                      onPressed: (){},
-                      child: Text("data")
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black,
+                      ),
+                      onPressed: (){
+                        if(addConnectionTextField.text.trim().isNotEmpty){
+                          addConnection(addConnectionTextField.text);
+                        }
+                      },
+                      child: Text(
+                        "ADD",
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 ),

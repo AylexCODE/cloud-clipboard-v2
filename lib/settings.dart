@@ -114,7 +114,6 @@ class _Settings extends State<Settings> {
                           ),
                         ),
                         onPressed: (){
-                          print("S");
                           saveSettings();
                           Navigator.pop(context);
                           ScaffoldMessenger.of(context).showSnackBar(
