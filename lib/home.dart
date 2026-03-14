@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:onclip/settings.dart';
 import 'package:onclip/utils/api_request.dart';
+import 'package:onclip/webview.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Home extends StatefulWidget {
@@ -111,9 +113,10 @@ class _HomeState extends State<Home> {
   void addConnection(String connectionString) async{
     final settings = await SharedPreferences.getInstance();
     List<String> cons = settings.getStringList("connections") ?? [];
+    String trimmedCon = connectionString.length > 5 ? connectionString.substring(0, 5) : connectionString; 
 
     if(!cons.contains(connectionString)){
-      cons.add(connectionString);
+      cons.add(trimmedCon);
       setState(() {
         addConnectionTextField.text = "";
       });
@@ -121,7 +124,7 @@ class _HomeState extends State<Home> {
 
     settings.setStringList("connections", cons);
 
-    getClipboardData(savedEndpoint, connectionString);
+    getClipboardData(savedEndpoint, trimmedCon);
     getSavedConnections();
   }
 
@@ -188,13 +191,34 @@ class _HomeState extends State<Home> {
             icon: Icon(Icons.copy),
             color: Colors.black,
             iconSize: 24,
-            onPressed: () => {},
+            onPressed: () async{
+              await Clipboard.setData(
+                ClipboardData(text: clipboard.text),
+              );
+
+              (){
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("Copied!"))
+                );
+              }();
+            },
           ),
           IconButton(
             icon: Icon(Icons.paste),
             color: Colors.black,
             iconSize: 24,
-            onPressed: () => {},
+            onPressed: () async{
+              ClipboardData? data = await Clipboard.getData(Clipboard.kTextPlain);
+
+              if(data != null && data.text != null){
+                String txt = data.text!;
+
+                setState(() {
+                  clipboard.text = txt;
+                });
+              }
+              
+            },
           ),
           IconButton(
             icon: Icon(Icons.save),
@@ -215,6 +239,14 @@ class _HomeState extends State<Home> {
                 context,
                 MaterialPageRoute(
                   builder: (context) => const Settings()
+                ),
+              ),
+            },
+            onLongPress: () => {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => WebView()
                 ),
               ),
             },
