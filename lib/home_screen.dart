@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
+import 'package:rxdart/rxdart.dart';
 import 'dart:ui';
 
 class HomeScreen extends StatelessWidget {
@@ -11,6 +12,22 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final bool isGuest = user?.isAnonymous ?? true;
+    String username = "-";
+
+    Stream<QuerySnapshot> publicStream = FirebaseFirestore.instance
+        .collection('clipboards')
+        .where('isPublic', isEqualTo: true)
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+
+    // 2. Define the User Stream (or an empty stream if guest)
+    Stream<QuerySnapshot?> userStream = isGuest
+        ? Stream.value(null)
+        : FirebaseFirestore.instance
+              .collection('clipboards')
+              .where('uid', isEqualTo: user!.uid)
+              .orderBy('createdAt', descending: true)
+              .snapshots();
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -66,17 +83,38 @@ class HomeScreen extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              isGuest ? 'Public Feed' : 'My Clipboard',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 17,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 0.3,
-                              ),
+                            FutureBuilder<DocumentSnapshot>(
+                              future: FirebaseFirestore.instance
+                                  .collection('users')
+                                  .doc(user?.uid)
+                                  .get(),
+                              builder: (context, userSnapshot) {
+                                // Default text while loading or if it's a guest
+                                String displayName = isGuest
+                                    ? 'Public Feed'
+                                    : 'Hello, -';
+
+                                if(userSnapshot.hasData && userSnapshot.data!.exists) {
+                                    final userData = userSnapshot.data!.data() as Map<String, dynamic>;
+                                    displayName = "Hello, ${userData['name']}";
+                                    username = userData['name'];
+                                }
+
+                                return Text(
+                                  displayName,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: 0.3,
+                                  ),
+                                );
+                              },
                             ),
                             Text(
-                              isGuest ? 'Browsing anonymously' : 'Your personal clips',
+                              isGuest
+                                  ? 'Browsing anonymously'
+                                  : 'Your personal clips',
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.6),
                                 fontSize: 11,
@@ -118,7 +156,9 @@ class HomeScreen extends StatelessWidget {
                                   Text(
                                     'Sign out',
                                     style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.85),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.85,
+                                      ),
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -145,18 +185,30 @@ class HomeScreen extends StatelessWidget {
             end: Alignment.bottomRight,
           ),
         ),
-        child: StreamBuilder<QuerySnapshot>(
-          stream: isGuest
-              ? FirebaseFirestore.instance
-                  .collection('clipboards')
-                  .where('isPublic', isEqualTo: true)
-                  .orderBy('createdAt', descending: true)
-                  .snapshots()
-              : FirebaseFirestore.instance
-                  .collection('clipboards')
-                  .where('uid', isEqualTo: user?.uid)
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
+        child: StreamBuilder<List<QueryDocumentSnapshot>>(
+          // 3. Combine both streams into one list
+          stream: CombineLatestStream.combine2(publicStream, userStream, (
+            QuerySnapshot public,
+            QuerySnapshot? private,
+          ) {
+            // Merge all docs into one list
+            final allDocs = [...public.docs, ...?(private?.docs)];
+
+            // 4. Remove duplicates (if a user's clip is also public)
+            final seenIds = <String>{};
+            final uniqueDocs = allDocs
+                .where((doc) => seenIds.add(doc.id))
+                .toList();
+
+            // 5. Re-sort by date (since merging breaks the Firestore order)
+            uniqueDocs.sort((a, b) {
+              Timestamp aTime = a['createdAt'] ?? Timestamp.now();
+              Timestamp bTime = b['createdAt'] ?? Timestamp.now();
+              return bTime.compareTo(aTime);
+            });
+
+            return uniqueDocs;
+          }),
           builder: (context, snapshot) {
             if (snapshot.hasError) {
               return Center(
@@ -172,7 +224,7 @@ class HomeScreen extends StatelessWidget {
               );
             }
 
-            final docs = snapshot.data!.docs;
+            final docs = snapshot.data!;
 
             if (docs.isEmpty) {
               return _EmptyState(isGuest: isGuest);
@@ -197,12 +249,12 @@ class HomeScreen extends StatelessWidget {
       floatingActionButton: isGuest
           ? null
           : _GlassyFAB(
-              onTap: () => _showCreatePostSheet(context, user!.uid),
+              onTap: () => _showCreatePostSheet(context, user!.uid, username),
             ),
     );
   }
 
-  void _showCreatePostSheet(BuildContext context, String uid) {
+  void _showCreatePostSheet(BuildContext context, String uid, String username) {
     final titleC = TextEditingController();
     final contentC = TextEditingController();
     bool isPublic = false;
@@ -226,8 +278,9 @@ class HomeScreen extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(32),
+                ),
                 border: Border.all(
                   color: Colors.white.withValues(alpha: 0.15),
                   width: 0.8,
@@ -337,10 +390,12 @@ class HomeScreen extends StatelessWidget {
                             Switch(
                               value: isPublic,
                               activeThumbColor: Colors.white,
-                              activeTrackColor:
-                                  Colors.purpleAccent.withValues(alpha: 0.7),
-                              inactiveTrackColor:
-                                  Colors.white.withValues(alpha: 0.15),
+                              activeTrackColor: Colors.purpleAccent.withValues(
+                                alpha: 0.7,
+                              ),
+                              inactiveTrackColor: Colors.white.withValues(
+                                alpha: 0.15,
+                              ),
                               inactiveThumbColor: Colors.white60,
                               onChanged: (val) =>
                                   setModalState(() => isPublic = val),
@@ -368,12 +423,13 @@ class HomeScreen extends StatelessWidget {
                           await FirebaseFirestore.instance
                               .collection('clipboards')
                               .add({
-                            'title': titleC.text,
-                            'content': contentC.text,
-                            'uid': uid,
-                            'isPublic': isPublic,
-                            'createdAt': FieldValue.serverTimestamp(),
-                          });
+                                'title': titleC.text,
+                                'content': contentC.text,
+                                'uid': uid,
+                                'owner': username,
+                                'isPublic': isPublic,
+                                'createdAt': FieldValue.serverTimestamp(),
+                              });
                           if (context.mounted) Navigator.pop(context);
                         }
                       },
@@ -580,11 +636,9 @@ class _PremiumClipCard extends StatelessWidget {
     final String title = data['title'] ?? 'Untitled';
     final String content = data['content'] ?? '';
     final String date = data['createdAt'] != null
-        ? (data['createdAt'] as Timestamp)
-            .toDate()
-            .toString()
-            .split(' ')[0]
+        ? (data['createdAt'] as Timestamp).toDate().toString().split(' ')[0]
         : 'Saving...';
+    final String username = isOwner ? "" : data['owner'];
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -665,6 +719,25 @@ class _PremiumClipCard extends StatelessWidget {
                           letterSpacing: 0.2,
                         ),
                       ),
+                      if (!isOwner) ...[
+                        Text(
+                          " | by: ",
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.white.withValues(alpha: 0.45),
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                        Text(
+                          username,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.white.withValues(alpha: 0.8),
+                            letterSpacing: 0.4,
+                          ),
+                        ),
+                      ],
                       if (isOwner) ...[
                         const SizedBox(width: 6),
                         // Edit button
@@ -846,8 +919,9 @@ class _PremiumClipCard extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(32),
+                ),
                 border: Border.all(
                   color: Colors.white.withValues(alpha: 0.15),
                   width: 0.8,
@@ -958,10 +1032,12 @@ class _PremiumClipCard extends StatelessWidget {
                             Switch(
                               value: isPublic,
                               activeThumbColor: Colors.white,
-                              activeTrackColor:
-                                  Colors.purpleAccent.withValues(alpha: 0.7),
-                              inactiveTrackColor:
-                                  Colors.white.withValues(alpha: 0.15),
+                              activeTrackColor: Colors.purpleAccent.withValues(
+                                alpha: 0.7,
+                              ),
+                              inactiveTrackColor: Colors.white.withValues(
+                                alpha: 0.15,
+                              ),
                               inactiveThumbColor: Colors.white60,
                               onChanged: (val) =>
                                   setModalState(() => isPublic = val),
