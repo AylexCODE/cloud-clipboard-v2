@@ -1,4 +1,4 @@
-# onclip
+# Cloud Clipboard v2
 
 A new Flutter project.
 
