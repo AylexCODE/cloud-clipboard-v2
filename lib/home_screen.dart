@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart';
 import 'package:rxdart/rxdart.dart';
+import 'settings_screen.dart';
 import 'dart:ui';
 
 class HomeScreen extends StatelessWidget {
@@ -124,51 +125,80 @@ class HomeScreen extends StatelessWidget {
                           ],
                         ),
                       ),
+                      // Settings button (logged-in only)
+                      if (!isGuest) ...[
+                        GestureDetector(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const SettingsScreen(),
+                            ),
+                          ),
+                          child: Container(
+                            width: 36,
+                            height: 36,
+                            margin: const EdgeInsets.only(right: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.22),
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.settings_outlined,
+                              color: Colors.white.withValues(alpha: 0.85),
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ],
                       // Sign out button — glassy pill
-                      GestureDetector(
-                        onTap: () => FirebaseAuth.instance.signOut(),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 14,
-                                vertical: 7,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.25),
-                                  width: 0.8,
+                      if (isGuest) ...[
+                        GestureDetector(
+                          onTap: () => FirebaseAuth.instance.signOut(),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 7,
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.logout_rounded,
-                                    size: 14,
-                                    color: Colors.white.withValues(alpha: 0.85),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(
+                                    color: Colors.white.withValues(alpha: 0.25),
+                                    width: 0.8,
                                   ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    'Sign out',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.85,
-                                      ),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(
+                                      Icons.logout_rounded,
+                                      size: 14,
+                                      color: Colors.white.withValues(alpha: 0.85),
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      'Sign out',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.85),
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
@@ -278,9 +308,8 @@ class HomeScreen extends StatelessWidget {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(32),
-                ),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(32)),
                 border: Border.all(
                   color: Colors.white.withValues(alpha: 0.15),
                   width: 0.8,
