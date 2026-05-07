@@ -15,7 +15,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _nameController = TextEditingController();
   final _passwordController = TextEditingController();
 
-  bool _isLoading = false;
+  bool _isAnonLoading = false;
+  bool _isLoginSignupLoading = false;
   bool _isSignUp = false;
   bool _obscureText = true;
 
@@ -29,7 +30,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _signIn() async {
     setState(() {
-      _isLoading = true;
+      _isLoginSignupLoading = true;
     });
     try {
       await FirebaseAuth.instance.signInWithEmailAndPassword(
@@ -39,13 +40,13 @@ class _LoginScreenState extends State<LoginScreen> {
     } on FirebaseAuthException catch (e) {
       if (mounted) _showSnackBar(e.message ?? 'Sign in failed');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoginSignupLoading = false);
     }
   }
 
   Future<void> _signUp() async {
     setState(() {
-      _isLoading = true;
+      _isLoginSignupLoading = true;
     });
     try {
       UserCredential userCredential = await FirebaseAuth.instance
@@ -61,13 +62,13 @@ class _LoginScreenState extends State<LoginScreen> {
     } on FirebaseAuthException catch (e) {
       if (mounted) _showSnackBar(e.message ?? 'Sign up failed');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoginSignupLoading = false);
     }
   }
 
   Future<void> _loginAnon() async {
     setState(() {
-      _isLoading = true;
+      _isAnonLoading = true;
     });
 
     try {
@@ -75,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } on FirebaseAuthException catch (e) {
       if (mounted) _showSnackBar(e.message ?? 'Login up failed');
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isAnonLoading = false);
     }
   }
 
@@ -121,337 +122,342 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: FadeTransition(opacity: animation, child: child),
                 );
               },
-              child: _isLoading
-                  ? const CircularProgressIndicator(
-                      key: ValueKey('loader'),
-                      color: Colors.white,
-                    )
-                  : ClipRRect(
-                      key: ValueKey(
-                        _isSignUp ? 'signup_form' : 'login_form',
-                      ), // Unique keys are critical!
-                      borderRadius: BorderRadius.circular(30),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                        child: SingleChildScrollView(
-                          child: AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 400),
-                            child: _isLoading
-                                ? const CircularProgressIndicator(
+              child: ClipRRect(
+                key: ValueKey(
+                  _isSignUp ? 'signup_form' : 'login_form',
+                ), // Unique keys are critical!
+                borderRadius: BorderRadius.circular(30),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: SingleChildScrollView(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(30),
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(
+                            sigmaX: 15,
+                            sigmaY: 15,
+                          ),
+                          child: Container(
+                            width:
+                                MediaQuery.of(context).size.width *
+                                0.85,
+                            padding: const EdgeInsets.all(25),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(
+                                alpha: 0.15,
+                              ),
+                              borderRadius: BorderRadius.circular(
+                                30,
+                              ),
+                              border: Border.all(
+                                color: Colors.white.withValues(
+                                  alpha: 0.2,
+                                ),
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.cloud_circle,
+                                  size: 80,
+                                  color: Colors.white,
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  _isSignUp
+                                      ? "Create Account"
+                                      : "Cloud Clipboard",
+                                  style: const TextStyle(
                                     color: Colors.white,
-                                  )
-                                : ClipRRect(
-                                    borderRadius: BorderRadius.circular(30),
-                                    child: BackdropFilter(
-                                      filter: ImageFilter.blur(
-                                        sigmaX: 15,
-                                        sigmaY: 15,
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                if (_isSignUp)
+                                  const SizedBox(height: 30),
+                                if (_isSignUp)
+                                  TextField(
+                                    controller: _nameController,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                    ),
+                                    cursorColor: Colors.white,
+                                    decoration: InputDecoration(
+                                      hintStyle: const TextStyle(
+                                        color: Colors.white60,
                                       ),
-                                      child: Container(
-                                        width:
-                                            MediaQuery.of(context).size.width *
-                                            0.85,
-                                        padding: const EdgeInsets.all(25),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.15,
+                                      prefixIcon: Icon(
+                                        Icons.person,
+                                        color: Colors.white70,
+                                      ),
+                                      labelText: "Name",
+                                      labelStyle: const TextStyle(
+                                        color: Colors.white70,
+                                      ),
+
+                                      // 2. Color of the label when the field IS selected (floating at the top)
+                                      floatingLabelStyle:
+                                          const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight:
+                                                FontWeight.bold,
                                           ),
-                                          borderRadius: BorderRadius.circular(
-                                            30,
+                                      filled: true,
+                                      fillColor: Colors.white
+                                          .withValues(alpha: 0.1),
+                                      // 1. Border when the field is NOT selected
+                                      enabledBorder:
+                                          OutlineInputBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(
+                                                  15,
+                                                ),
+                                            borderSide:
+                                                const BorderSide(
+                                                  color: Colors
+                                                      .white30,
+                                                  width: 1.0,
+                                                ),
                                           ),
-                                          border: Border.all(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.2,
+
+                                      // 2. Border when the user is typing (active)
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(
+                                              15,
                                             ),
-                                          ),
-                                        ),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            const Icon(
-                                              Icons.cloud_circle,
-                                              size: 80,
+                                        borderSide:
+                                            const BorderSide(
                                               color: Colors.white,
+                                              width: 2.0,
+                                            ), // Brighter/Thicker
+                                      ),
+
+                                      // 3. The fallback border
+                                      border: OutlineInputBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(
+                                              15,
                                             ),
-                                            const SizedBox(height: 10),
-                                            Text(
-                                              _isSignUp
-                                                  ? "Create Account"
-                                                  : "Cloud Clipboard",
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 24,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                            if (_isSignUp)
-                                              const SizedBox(height: 30),
-                                            if (_isSignUp)
-                                              TextField(
-                                                controller: _nameController,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
-                                                ),
-                                                cursorColor: Colors.white,
-                                                decoration: InputDecoration(
-                                                  hintStyle: const TextStyle(
-                                                    color: Colors.white60,
-                                                  ),
-                                                  prefixIcon: Icon(
-                                                    Icons.person,
-                                                    color: Colors.white70,
-                                                  ),
-                                                  labelText: "Name",
-                                                  labelStyle: const TextStyle(
-                                                    color: Colors.white70,
-                                                  ),
-
-                                                  // 2. Color of the label when the field IS selected (floating at the top)
-                                                  floatingLabelStyle:
-                                                      const TextStyle(
-                                                        color: Colors.white,
-                                                        fontWeight:
-                                                            FontWeight.bold,
-                                                      ),
-                                                  filled: true,
-                                                  fillColor: Colors.white
-                                                      .withValues(alpha: 0.1),
-                                                  // 1. Border when the field is NOT selected
-                                                  enabledBorder:
-                                                      OutlineInputBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              15,
-                                                            ),
-                                                        borderSide:
-                                                            const BorderSide(
-                                                              color: Colors
-                                                                  .white30,
-                                                              width: 1.0,
-                                                            ),
-                                                      ),
-
-                                                  // 2. Border when the user is typing (active)
-                                                  focusedBorder: OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          15,
-                                                        ),
-                                                    borderSide:
-                                                        const BorderSide(
-                                                          color: Colors.white,
-                                                          width: 2.0,
-                                                        ), // Brighter/Thicker
-                                                  ),
-
-                                                  // 3. The fallback border
-                                                  border: OutlineInputBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          15,
-                                                        ),
-                                                  ),
-                                                ),
-                                              ),
-                                            const SizedBox(height: 15),
-                                            TextField(
-                                              controller: _emailController,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                              ),
-                                              cursorColor: Colors.white,
-                                              decoration: InputDecoration(
-                                                hintStyle: const TextStyle(
-                                                  color: Colors.white60,
-                                                ),
-                                                prefixIcon: Icon(
-                                                  Icons.email_outlined,
-                                                  color: Colors.white70,
-                                                ),
-                                                labelText: "Email",
-                                                labelStyle: const TextStyle(
-                                                  color: Colors.white70,
-                                                ),
-
-                                                // 2. Color of the label when the field IS selected (floating at the top)
-                                                floatingLabelStyle:
-                                                    const TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                filled: true,
-                                                fillColor: Colors.white
-                                                    .withValues(alpha: 0.1),
-                                                // 1. Border when the field is NOT selected
-                                                enabledBorder:
-                                                    OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            15,
-                                                          ),
-                                                      borderSide:
-                                                          const BorderSide(
-                                                            color:
-                                                                Colors.white30,
-                                                            width: 1.0,
-                                                          ),
-                                                    ),
-
-                                                // 2. Border when the user is typing (active)
-                                                focusedBorder:
-                                                    OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            15,
-                                                          ),
-                                                      borderSide:
-                                                          const BorderSide(
-                                                            color: Colors.white,
-                                                            width: 2.0,
-                                                          ), // Brighter/Thicker
-                                                    ),
-
-                                                // 3. The fallback border
-                                                border: OutlineInputBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(15),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 15),
-                                            TextField(
-                                              controller: _passwordController,
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                              ),
-                                              cursorColor: Colors.white,
-                                              obscureText: _obscureText,
-                                              decoration: InputDecoration(
-                                                hintStyle: const TextStyle(
-                                                  color: Colors.white60,
-                                                ),
-                                                prefixIcon: Icon(
-                                                  Icons.lock_outline,
-                                                  color: Colors.white70,
-                                                ),
-                                                labelText: "Password",
-                                                labelStyle: const TextStyle(
-                                                  color: Colors.white70,
-                                                ),
-
-                                                // 2. Color of the label when the field IS selected (floating at the top)
-                                                floatingLabelStyle:
-                                                    const TextStyle(
-                                                      color: Colors.white,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
-                                                filled: true,
-                                                fillColor: Colors.white
-                                                    .withValues(alpha: 0.1),
-                                                // 1. Border when the field is NOT selected
-                                                enabledBorder:
-                                                    OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            15,
-                                                          ),
-                                                      borderSide:
-                                                          const BorderSide(
-                                                            color:
-                                                                Colors.white30,
-                                                            width: 1.0,
-                                                          ),
-                                                    ),
-
-                                                // 2. Border when the user is typing (active)
-                                                focusedBorder:
-                                                    OutlineInputBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            15,
-                                                          ),
-                                                      borderSide:
-                                                          const BorderSide(
-                                                            color: Colors.white,
-                                                            width: 2.0,
-                                                          ), // Brighter/Thicker
-                                                    ),
-
-                                                // 3. The fallback border
-                                                border: OutlineInputBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(15),
-                                                ),
-                                                suffixIcon: IconButton(
-                                                  onPressed: () => {
-                                                    setState(() {
-                                                      _obscureText =
-                                                          !_obscureText;
-                                                    }),
-                                                  },
-                                                  icon: Icon(
-                                                    _obscureText
-                                                        ? Icons.visibility_off
-                                                        : Icons.visibility,
-                                                    color: Colors.white70,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(height: 25),
-                                            SizedBox(
-                                              width: double.infinity,
-                                              height: 50,
-                                              child: ElevatedButton(
-                                                onPressed: () => _isSignUp
-                                                    ? _signUp()
-                                                    : _signIn(),
-
-                                                child: Text(
-                                                  _isSignUp
-                                                      ? "GET STARTED"
-                                                      : "SIGN IN",
-                                                ),
-                                              ),
-                                            ),
-                                            SizedBox(height: 6),
-                                            TextButton(
-                                              onPressed: () => setState(
-                                                () => _isSignUp = !_isSignUp,
-                                              ),
-                                              child: Text(
-                                                _isSignUp
-                                                    ? "Already have an account? Login"
-                                                    : "New? Create Account",
-                                                style: const TextStyle(
-                                                  color: Colors.white70,
-                                                ),
-                                              ),
-                                            ),
-                                            const Divider(
-                                              color: Colors.white24,
-                                            ),
-                                            TextButton(
-                                              onPressed: () => _loginAnon(),
-                                              child: const Text(
-                                                "Browse Anonymously",
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
                                       ),
                                     ),
                                   ),
+                                const SizedBox(height: 15),
+                                TextField(
+                                  controller: _emailController,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                  ),
+                                  cursorColor: Colors.white,
+                                  decoration: InputDecoration(
+                                    hintStyle: const TextStyle(
+                                      color: Colors.white60,
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.email_outlined,
+                                      color: Colors.white70,
+                                    ),
+                                    labelText: "Email",
+                                    labelStyle: const TextStyle(
+                                      color: Colors.white70,
+                                    ),
+                                    // 2. Color of the label when the field IS selected (floating at the top)
+                                    floatingLabelStyle:
+                                        const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight:
+                                              FontWeight.bold,
+                                        ),
+                                    filled: true,
+                                    fillColor: Colors.white
+                                        .withValues(alpha: 0.1),
+                                    // 1. Border when the field is NOT selected
+                                    enabledBorder:
+                                        OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(
+                                                15,
+                                              ),
+                                          borderSide:
+                                              const BorderSide(
+                                                color:
+                                                    Colors.white30,
+                                                width: 1.0,
+                                              ),
+                                        ),
+
+                                    // 2. Border when the user is typing (active)
+                                    focusedBorder:
+                                        OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(
+                                                15,
+                                              ),
+                                          borderSide:
+                                              const BorderSide(
+                                                color: Colors.white,
+                                                width: 2.0,
+                                              ), // Brighter/Thicker
+                                        ),
+
+                                    // 3. The fallback border
+                                    border: OutlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(15),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 15),
+                                TextField(
+                                  controller: _passwordController,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                  ),
+                                  cursorColor: Colors.white,
+                                  obscureText: _obscureText,
+                                  decoration: InputDecoration(
+                                    hintStyle: const TextStyle(
+                                      color: Colors.white60,
+                                    ),
+                                    prefixIcon: Icon(
+                                      Icons.lock_outline,
+                                      color: Colors.white70,
+                                    ),
+                                    labelText: "Password",
+                                    labelStyle: const TextStyle(
+                                      color: Colors.white70,
+                                    ),
+
+                                    // 2. Color of the label when the field IS selected (floating at the top)
+                                    floatingLabelStyle:
+                                        const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight:
+                                              FontWeight.bold,
+                                        ),
+                                    filled: true,
+                                    fillColor: Colors.white
+                                        .withValues(alpha: 0.1),
+                                    // 1. Border when the field is NOT selected
+                                    enabledBorder:
+                                        OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(
+                                                15,
+                                              ),
+                                          borderSide:
+                                              const BorderSide(
+                                                color:
+                                                    Colors.white30,
+                                                width: 1.0,
+                                              ),
+                                        ),
+
+                                    // 2. Border when the user is typing (active)
+                                    focusedBorder:
+                                        OutlineInputBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(
+                                                15,
+                                              ),
+                                          borderSide:
+                                              const BorderSide(
+                                                color: Colors.white,
+                                                width: 2.0,
+                                              ), // Brighter/Thicker
+                                        ),
+
+                                    // 3. The fallback border
+                                    border: OutlineInputBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(15),
+                                    ),
+                                    suffixIcon: IconButton(
+                                      onPressed: () => {
+                                        setState(() {
+                                          _obscureText =
+                                              !_obscureText;
+                                        }),
+                                      },
+                                      icon: Icon(
+                                        _obscureText
+                                            ? Icons.visibility_off
+                                            : Icons.visibility,
+                                        color: Colors.white70,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 25),
+                                SizedBox(
+                                  width: double.infinity,
+                                  height: 50,
+                                  child: ElevatedButton(
+                                    onPressed: () => _isSignUp
+                                        ? _signUp()
+                                        : _signIn(),
+                                    child: _isLoginSignupLoading ? SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        key: ValueKey('loader'),
+                                        color: Colors.indigoAccent,
+                                      ),
+                                    ) :
+                                    Text(
+                                      _isSignUp
+                                          ? "GET STARTED"
+                                          : "SIGN IN",
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(height: 6),
+                                TextButton(
+                                  onPressed: () => setState(
+                                    () => _isSignUp = !_isSignUp,
+                                  ),
+                                  child: Text(
+                                    _isSignUp
+                                        ? "Already have an account? Login"
+                                        : "New? Create Account",
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                    ),
+                                  ),
+                                ),
+                                const Divider(
+                                  color: Colors.white24,
+                                ),
+                                TextButton(
+                                  onPressed: _isAnonLoading ? null : () => _loginAnon(),
+                                  child: _isAnonLoading ? SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      key: ValueKey('loader'),
+                                      color: Colors.white,
+                                    ),
+                                  ) :
+                                  const Text(
+                                    "Browse Anonymously",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
+                  ),
+                ),
+              ),
             ),
           ),
         ],
