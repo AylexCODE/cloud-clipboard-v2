@@ -404,7 +404,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                       height: 18,
                                       child: CircularProgressIndicator(
                                         key: ValueKey('loader'),
-                                        color: Colors.indigoAccent,
+                                        color: Colors.deepPurple,
                                       ),
                                     ) :
                                     Text(
@@ -438,7 +438,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                     height: 18,
                                     child: CircularProgressIndicator(
                                       key: ValueKey('loader'),
-                                      color: Colors.white,
+                                      color: Colors.deepPurple,
                                     ),
                                   ) :
                                   const Text(
