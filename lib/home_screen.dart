@@ -6,8 +6,26 @@ import 'package:rxdart/rxdart.dart';
 import 'settings_screen.dart';
 import 'dart:ui';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  String _searchQuery = '';
+  bool _isSearching = false;
+  final _searchController = TextEditingController();
+
+  final _searchFocus = FocusNode();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchFocus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +51,7 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(64),
+        preferredSize: Size.fromHeight(_isSearching ? 117 : 65),
         child: ClipRect(
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
@@ -56,9 +74,15 @@ class HomeScreen extends StatelessWidget {
               ),
               child: SafeArea(
                 bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.max,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: SizedBox(
+                        height: 64,
+                        child: Row(
                     children: [
                       // Logo mark
                       Container(
@@ -123,6 +147,48 @@ class HomeScreen extends StatelessWidget {
                               ),
                             ),
                           ],
+                        ),
+                      ),
+                      // Search button
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _isSearching = !_isSearching;
+                            // if (!_isSearching) {
+                            //   _searchQuery = '';
+                            //   _searchController.clear();
+                            //   _searchFocus.unfocus();
+                            // } else {
+                            if(_isSearching) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                _searchFocus.requestFocus();
+                              });
+                            }
+                          });
+                        },
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          margin: const EdgeInsets.only(right: 10),
+                          decoration: BoxDecoration(
+                            color: _isSearching
+                                ? Colors.white.withValues(alpha: 0.25)
+                                : Colors.white.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _isSearching
+                                  ? Colors.white.withValues(alpha: 0.45)
+                                  : Colors.white.withValues(alpha: 0.22),
+                              width: 0.8,
+                            ),
+                          ),
+                          child: Icon(
+                            _isSearching
+                                ? Icons.search_off_rounded
+                                : Icons.search_rounded,
+                            color: Colors.white.withValues(alpha: 0.85),
+                            size: 18,
+                          ),
                         ),
                       ),
                       // Settings button (logged-in only)
@@ -203,10 +269,81 @@ class HomeScreen extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
+              // ── Animated search bar ──────────────────────────────────
+              AnimatedCrossFade(
+                duration: const Duration(milliseconds: 00),
+                crossFadeState: _isSearching
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                firstChild: const SizedBox(width: double.infinity, height: 0),
+                secondChild: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                      child: Container(
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.25),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          focusNode: _searchFocus,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                          ),
+                          cursorColor: Colors.white,
+                          onChanged: (val) =>
+                              setState(() => _searchQuery = val.toLowerCase()),
+                          decoration: InputDecoration(
+                            hintText: 'Search by title or content...',
+                            hintStyle: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.45),
+                              fontSize: 14,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.search_rounded,
+                              color: Colors.white.withValues(alpha: 0.5),
+                              size: 18,
+                            ),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: Icon(
+                                      Icons.close_rounded,
+                                      color: Colors.white.withValues(alpha: 0.5),
+                                      size: 16,
+                                    ),
+                                    onPressed: () => setState(() {
+                                      _searchQuery = '';
+                                      _searchController.clear();
+                                    }),
+                                  )
+                                : null,
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
+    ),
+  ),
+),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -256,20 +393,31 @@ class HomeScreen extends StatelessWidget {
 
             final docs = snapshot.data!;
 
-            if (docs.isEmpty) {
-              return _EmptyState(isGuest: isGuest);
+            // ── Client-side search filter ──────────────────────────────
+            final filtered = _searchQuery.isEmpty
+                ? docs
+                : docs.where((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final title = (data['title'] ?? '').toString().toLowerCase();
+                    final content = (data['content'] ?? '').toString().toLowerCase();
+                    return title.contains(_searchQuery) ||
+                        content.contains(_searchQuery);
+                  }).toList();
+
+            if (filtered.isEmpty) {
+              return _EmptyState(isGuest: isGuest, isSearching: _searchQuery.isNotEmpty);
             }
 
             return ListView.builder(
               padding: const EdgeInsets.fromLTRB(20, 100, 20, 110),
-              itemCount: docs.length,
+              itemCount: filtered.length,
               itemBuilder: (context, index) {
-                final data = docs[index].data() as Map<String, dynamic>;
+                final data = filtered[index].data() as Map<String, dynamic>;
                 return _PremiumClipCard(
                   data: data,
-                  docRef: docs[index].reference,
+                  docRef: filtered[index].reference,
                   isOwner: data['uid'] == user?.uid,
-                  onDelete: () => docs[index].reference.delete(),
+                  onDelete: () => filtered[index].reference.delete(),
                 );
               },
             );
@@ -535,7 +683,8 @@ class _GlassTextField extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   final bool isGuest;
-  const _EmptyState({required this.isGuest});
+  final bool isSearching;
+  const _EmptyState({required this.isGuest, this.isSearching = false});
 
   @override
   Widget build(BuildContext context) {
@@ -558,7 +707,7 @@ class _EmptyState extends StatelessWidget {
                   ),
                 ),
                 child: Icon(
-                  Icons.cloud_off_rounded,
+                  isSearching ? Icons.search_off_rounded : Icons.cloud_off_rounded,
                   size: 52,
                   color: Colors.white.withValues(alpha: 0.5),
                 ),
@@ -567,7 +716,11 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            isGuest ? "No public clips yet" : "No clips yet",
+            isSearching
+                ? "No results found"
+                : isGuest
+                    ? "No public clips yet"
+                    : "No clips yet",
             style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
@@ -576,8 +729,10 @@ class _EmptyState extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            isGuest
-                ? "Check back later for shared content"
+            isSearching
+                ? "Try a different title or keyword"
+                : isGuest
+                    ? "Check back later for shared content"
                 : "Tap + to save your first clip",
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.55),
